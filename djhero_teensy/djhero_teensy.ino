@@ -80,6 +80,10 @@ struct btn_info btns[] = {
   { 14, -1, (int)KEY_RIGHT, true },     // DPAD right
   { 17, -1, (int)KEY_UP, true },        // DPAD up
   { 16, -1, (int)KEY_DOWN, true },      // DPAD down
+
+  { 20, -1, (int)KEY_R, true },         // turntable
+  { 19, -1, (int)KEY_B, true },         // turntable
+  { 18, -1, (int)KEY_G, true },         // turntable
 };
 
 struct dpad_info dpad[] = {
@@ -106,10 +110,12 @@ void setup() {
   pinMode(9, OUTPUT);
   pinMode(12, OUTPUT);
   pinMode(13, OUTPUT);
+  pinMode(21, OUTPUT);
   pinMode(22, OUTPUT);
   digitalWrite(9, LOW);
   digitalWrite(12, LOW);
   digitalWrite(13, LOW);
+  digitalWrite(21, LOW);
   digitalWrite(22, LOW);
 
   // Big button LED
