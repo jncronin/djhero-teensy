@@ -48,7 +48,7 @@
  *  '0'-'9' (ASCII characters) - set the LED to fixed mode at the
  *    appropriate brightness
  *  'f' or 'F' - start the LED flashing
- *  
+ *  'a', 'b', 'c' - rotary pot window size
  */
 
 #include <Bounce2.h>
@@ -99,7 +99,7 @@ bool big_is_flashing = true;
 
 unsigned long rp_debounce_start = 0;
 const unsigned long rp_debounce_time = 10;
-const int rp_window_width = 1024/16;
+int rp_window_width = 1024/24;
 int rp_window_centre = 0;
 int rp_last_window_centre = 0;
 
@@ -272,6 +272,18 @@ void loop() {
     if(svar == 'f' || svar == 'F')
     {
       big_is_flashing = true;
+    }
+    if(svar == 'a' || svar == 'A')
+    {
+      rp_window_width = 1024 / 16;
+    }
+    if(svar == 'b' || svar == 'B')
+    {
+      rp_window_width = 1024 / 24;
+    }
+    if(svar == 'c' || svar == 'C')
+    {
+      rp_window_width = 1024 / 32;
     }
   }
 
