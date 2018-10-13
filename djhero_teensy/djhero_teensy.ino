@@ -103,6 +103,13 @@ int rp_window_width = 1024/24;
 int rp_window_centre = 0;
 int rp_last_window_centre = 0;
 
+unsigned long sp_debounce_start = 0;
+const int sp_window_width = 1024/32;
+int sp_window_centre = 0;
+
+int mouse_last_x = 0;
+unsigned long mouse_last_update_time = 0;
+
 void setup() {
   // put your setup code here, to run once:
 
@@ -150,6 +157,9 @@ void setup() {
 
   // Big button is set to flash
   big_is_flashing = true;
+
+  // Mouse automatically reports its position every 100 ms
+  mouse_last_update_time = millis();
 }
 
 void loop() {
@@ -209,9 +219,36 @@ void loop() {
   // Test rotary pot
   Joystick.Zrotate(analogRead(0));
 
+  // Debounce slide pot
+  unsigned long cur_time = millis();
+  int cur_sp = analogRead(1);
+  int sp_diff = cur_sp - sp_window_centre;
+  int mouse_bin = mouse_last_x;
+  if(sp_diff > sp_window_width || sp_diff < -sp_window_width)
+  {
+    sp_window_centre = cur_sp;
+    sp_debounce_start = cur_time;
+  }
+  else
+  {
+    // If timer has elapsed, we have a new center
+    unsigned long time_diff = cur_time - sp_debounce_start;
+  
+    if(time_diff > rp_debounce_time)
+    {
+      mouse_bin = sp_window_centre / 32 + 1;
+      sp_window_centre = cur_sp;
+    }
+  }
+  if(mouse_bin != mouse_last_x || cur_time > (mouse_last_update_time + 100))
+  {
+    Mouse.move(mouse_bin, 0);
+    mouse_last_x = mouse_bin;
+    mouse_last_update_time = cur_time;
+  }  
+
   // Handle rotary pot as a left/right key press
   int cur_rp = analogRead(0);
-  unsigned long cur_time = millis();
   int diff = cur_rp - rp_window_centre;
 
   // Handle wrap-around 0 mark
@@ -246,16 +283,15 @@ void loop() {
         Keyboard.press(KEY_RIGHT);
         Keyboard.release(KEY_RIGHT);
         rp_last_window_centre = rp_window_centre;
+        rp_window_centre = cur_rp;
       }
       else if(diff2 < -rp_window_width)
       {
         Keyboard.press(KEY_LEFT);
         Keyboard.release(KEY_LEFT);
         rp_last_window_centre = rp_window_centre;
+        rp_window_centre = cur_rp;
       }
-
-      // Regardless, reset window centre to combat drift due to heating effects etc
-      rp_window_centre = cur_rp;
     }
   }
 
