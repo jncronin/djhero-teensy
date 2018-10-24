@@ -107,7 +107,12 @@ unsigned long sp_debounce_start = 0;
 const int sp_window_width = 1024/32;
 int sp_window_centre = 0;
 
+unsigned long vp_debounce_start = 0;
+const int vp_window_width = 1024/100;
+int vp_window_centre = 0;
+
 int mouse_last_x = 0;
+int mouse_last_y = 0;
 unsigned long mouse_last_update_time = 0;
 
 void setup() {
@@ -240,12 +245,34 @@ void loop() {
       sp_window_centre = cur_sp;
     }
   }
-  if(mouse_bin != mouse_last_x || cur_time > (mouse_last_update_time + 100))
+
+  // Debounce volume pot
+  int cur_vp = analogRead(2);
+  int vp_diff = cur_vp - vp_window_centre;
+  int mouse_y_bin = mouse_last_y;
+  if(vp_diff > vp_window_width || vp_diff < -vp_window_width)
   {
-    Mouse.move(mouse_bin, 0);
+    vp_window_centre = cur_vp;
+    vp_debounce_start = cur_time;
+  }
+  else
+  {
+    // If timer has elapsed, we have a new center
+    unsigned long time_diff = cur_time - vp_debounce_start;
+  
+    if(time_diff > rp_debounce_time)
+    {
+      mouse_y_bin = vp_window_centre / 100 + 1;
+      vp_window_centre = cur_vp;
+    }    
+  }
+  if(mouse_bin != mouse_last_x || mouse_y_bin != mouse_last_y || cur_time > (mouse_last_update_time + 100))
+  {
+    Mouse.move(mouse_bin, mouse_y_bin);
     mouse_last_x = mouse_bin;
+    mouse_last_y = mouse_y_bin;
     mouse_last_update_time = cur_time;
-  }  
+  }
 
   // Handle rotary pot as a left/right key press
   int cur_rp = analogRead(0);
