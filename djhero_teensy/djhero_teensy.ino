@@ -101,7 +101,11 @@ class AnalogDebounce
       new_data = false;
       set_min_max(cur_v);
 
-      return cur_v / window_width + 1;
+      auto ret = cur_v / window_width + 1;
+      if(ret < 1) ret = 1;
+      if(ret > s) ret = s;
+
+      return s;
     }
 
     void Tick()
@@ -235,7 +239,7 @@ void setup() {
   mouse_last_update_time = millis();
 
   sp = AnalogDebounce(1, 32);
-  vp = AnalogDebounce(2, 10);
+  vp = AnalogDebounce(2, 11);
 }
 
 void loop() {
