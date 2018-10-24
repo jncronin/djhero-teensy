@@ -105,7 +105,7 @@ class AnalogDebounce
       if(ret < 1) ret = 1;
       if(ret > s) ret = s;
 
-      return s;
+      return ret;
     }
 
     void Tick()
