@@ -53,6 +53,80 @@
 
 #include <Bounce2.h>
 
+class AnalogDebounce
+{
+  private:
+    int p;
+    int s;
+    int window_width;
+    int h_window_width;
+    bool new_data = true;
+    unsigned long last_time, dt;
+    int cur_min, cur_max;
+
+    void set_min_max(int val)
+    {
+      cur_min = val - h_window_width;
+      cur_max = val + h_window_width;
+    }
+    
+  public:
+    AnalogDebounce(int apin = -1, int states = 32, unsigned long debounce_time = 10)
+    {
+      p = apin;
+      s = states;
+      window_width = 1024/states;
+      h_window_width = window_width / 2;
+      dt = debounce_time;
+      last_time = millis();
+
+      set_min_max(analogRead(p));
+    }
+
+    bool HasNewState()
+    {
+      return new_data;
+    }
+
+    int State()
+    {
+      if(p == -1)
+      {
+        return 0;
+      }
+      
+      // Return current window and set it as the new stable state
+      auto cur_v = analogRead(p);
+
+      new_data = false;
+      set_min_max(cur_v);
+
+      return cur_v / window_width + 1;
+    }
+
+    void Tick()
+    {
+      if(p == -1)
+      {
+        return;
+      }
+      auto cur_t = millis();
+      auto cur_v = analogRead(p);
+
+      if(cur_v >= cur_min && cur_v <= cur_max)
+      {
+        // We are stable, so reset counter
+        last_time = cur_t;
+        new_data = false;
+      }
+      else if((cur_t - last_time) > dt)
+      {
+        // We have been outside the window for the appropriate length of time
+        new_data = true;
+      }
+    }  
+};
+
 struct btn_info
 {
   int pin;
@@ -103,13 +177,7 @@ int rp_window_width = 1024/24;
 int rp_window_centre = 0;
 int rp_last_window_centre = 0;
 
-unsigned long sp_debounce_start = 0;
-const int sp_window_width = 1024/32;
-int sp_window_centre = 0;
-
-unsigned long vp_debounce_start = 0;
-const int vp_window_width = 1024/100;
-int vp_window_centre = 0;
+AnalogDebounce sp, vp;
 
 int mouse_last_x = 0;
 int mouse_last_y = 0;
@@ -165,6 +233,9 @@ void setup() {
 
   // Mouse automatically reports its position every 100 ms
   mouse_last_update_time = millis();
+
+  sp = AnalogDebounce(1, 32);
+  vp = AnalogDebounce(2, 10);
 }
 
 void loop() {
@@ -224,52 +295,24 @@ void loop() {
   // Test rotary pot
   Joystick.Zrotate(analogRead(0));
 
-  // Debounce slide pot
-  unsigned long cur_time = millis();
-  int cur_sp = analogRead(1);
-  int sp_diff = cur_sp - sp_window_centre;
-  int mouse_bin = mouse_last_x;
-  if(sp_diff > sp_window_width || sp_diff < -sp_window_width)
-  {
-    sp_window_centre = cur_sp;
-    sp_debounce_start = cur_time;
-  }
-  else
-  {
-    // If timer has elapsed, we have a new center
-    unsigned long time_diff = cur_time - sp_debounce_start;
-  
-    if(time_diff > rp_debounce_time)
-    {
-      mouse_bin = sp_window_centre / 32 + 1;
-      sp_window_centre = cur_sp;
-    }
-  }
-
-  // Debounce volume pot
-  int cur_vp = analogRead(2);
-  int vp_diff = cur_vp - vp_window_centre;
+  // Debounce slide and volume pots, but also update every 100 msec anyway
+  sp.Tick();
+  vp.Tick();
+  int mouse_x_bin = mouse_last_x;
   int mouse_y_bin = mouse_last_y;
-  if(vp_diff > vp_window_width || vp_diff < -vp_window_width)
+  auto cur_time = millis();
+  if(sp.HasNewState())
   {
-    vp_window_centre = cur_vp;
-    vp_debounce_start = cur_time;
+    mouse_x_bin = sp.State();
   }
-  else
+  if(vp.HasNewState())
   {
-    // If timer has elapsed, we have a new center
-    unsigned long time_diff = cur_time - vp_debounce_start;
-  
-    if(time_diff > rp_debounce_time)
-    {
-      mouse_y_bin = vp_window_centre / 100 + 1;
-      vp_window_centre = cur_vp;
-    }    
+    mouse_y_bin = vp.State();
   }
-  if(mouse_bin != mouse_last_x || mouse_y_bin != mouse_last_y || cur_time > (mouse_last_update_time + 100))
+  if(mouse_x_bin != mouse_last_x || mouse_y_bin != mouse_last_y || cur_time > (mouse_last_update_time + 100))
   {
-    Mouse.move(mouse_bin, mouse_y_bin);
-    mouse_last_x = mouse_bin;
+    Mouse.move(mouse_x_bin, mouse_y_bin);
+    mouse_last_x = mouse_x_bin;
     mouse_last_y = mouse_y_bin;
     mouse_last_update_time = cur_time;
   }
